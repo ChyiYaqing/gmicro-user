@@ -1,0 +1,37 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: user
+  labels:
+    app: user
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: user
+  template:
+    metadata:
+      labels:
+        app: user
+    spec:
+      containers:
+        - name: user
+          image: chyiyaqing/user:v0.0.1
+          ports:
+            - containerPort: 8380
+          env:
+            - name: APPLICATION_PORT
+              value: "8380"
+            - name: SQLITE_DB
+              value: "/data/sqlite.db"
+            - name: TZ
+              value: "Asia/Shanghai"
+            - name: ENV
+              value: "development"
+          volumeMounts:
+            - name: sqlite-data
+              mountPath: /data
+      volumes:
+        - name: sqlite-data
+          persistentVolumeClaim:
+            claimName: sqlite-user-pvc
