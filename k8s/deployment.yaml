@@ -16,7 +16,7 @@ spec:
     spec:
       containers:
         - name: user
-          image: chyiyaqing/user:v0.0.1
+          image: chyiyaqing/user:v0.0.1-27ca9b4
           ports:
             - containerPort: 8380
           env:
