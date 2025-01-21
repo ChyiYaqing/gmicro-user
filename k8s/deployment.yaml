@@ -20,14 +20,20 @@ spec:
           ports:
             - containerPort: 8380
           env:
-            - name: APPLICATION_PORT
+            - name: APPLICATION_GRPC_PORT
               value: "8380"
+            - name: APPLICATION_HTTP_PORT
+              value: "8381"
             - name: SQLITE_DB
               value: "/data/sqlite.db"
             - name: TZ
               value: "Asia/Shanghai"
             - name: ENV
               value: "development"
+            - name: JWT_SECRET
+              value: "abc123"
+            - name: JWT_TOKEN_DURATION
+              value: "60" # 60 minute
           volumeMounts:
             - name: sqlite-data
               mountPath: /data

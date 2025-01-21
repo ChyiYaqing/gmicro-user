@@ -1,0 +1,22 @@
+services:
+  user:
+    image: chyiyaqing/user:v0.0.1-df3c3eb
+    container_name: user
+    ports:
+      - "8380:8380"   
+      - "8381:8381"   
+    environment:
+      APPLICATION_GRPC_PORT: "8380"
+      APPLICATION_HTTP_PORT: "8381"
+      SQLITE_DB: "/data/sqlite.db"
+      TZ: "Asia/Shanghai"
+      ENV: "development"
+      JWT_SECRET: "abc123"
+      JWT_TOKEN_DURATION: "60"
+    volumes:
+      - ./data:/data
+
+volumes:
+  sqlite-data:
+    driver: local
+
