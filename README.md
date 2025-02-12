@@ -70,8 +70,6 @@ chyiyaqing in ~ at HP-EliteDesk-800-G6-Desktop-Mini-PC took 2.6s
 > 在实际调用RPC之前由gRPC客户端调用的函数
 
 
-
-
 ## JWT
 
 JWT 结构分为三个base64url编码部分, [Header: [令牌类型,算法标头]、 Payload: [数据的有效负载]、 Signature: [签名]]
@@ -118,3 +116,15 @@ if !ok {
 token := md["authorization"]
 ```
 
+Write first database migration:
+```shell
+dbmate new init_migration
+```
+
+## Visual shutdown process
+
+![graceful termination](misc/images/graceful-termination.png)
+
+In production environments, you might need to handle additional cleanup tasks during shutdown.
+This could include closing database connections, saving state, or cleaning up temporary files.
+These operations should be added before the `server.Shutdown` call and should respect the same context timeout.

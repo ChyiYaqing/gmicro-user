@@ -2,11 +2,15 @@ package grpc
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log"
 	"net"
 	"net/http"
+	"os"
+	"os/signal"
 	"strings"
+	"syscall"
 	"time"
 
 	userv1 "github.com/chyiyaqing/gmicro-proto/golang/user/v1"
@@ -100,8 +104,7 @@ func (a *Adapter) runGRPCServer() {
 }
 
 func (a *Adapter) runGatewayServer() {
-	ctx := context.Background()
-	ctx, cancel := context.WithCancel(ctx)
+	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
 	defer cancel()
 
 	// creating mux for gRPC gateway, this will multiplex or route request different gRPC service
@@ -144,13 +147,50 @@ func (a *Adapter) runGatewayServer() {
 
 	// Start HTTP server (and proxy calls to gRPC server)
 	gwServer := &http.Server{
-		Addr:    fmt.Sprintf(":%d", a.gwPort),
-		Handler: interceptor.WithLoggerInterceptor(mux),
+		Addr:         fmt.Sprintf(":%d", a.gwPort),
+		Handler:      interceptor.WithLoggerInterceptor(mux),
+		ReadTimeout:  15 * time.Second,
+		WriteTimeout: 15 * time.Second,
+		IdleTimeout:  60 * time.Second,
 	}
-	log.Printf("starting gRPC-Gateway server on port %d...", a.gwPort)
-	if err := gwServer.ListenAndServe(); err != nil {
-		log.Fatalf("Failed to serve gRPC-Gateway: %v", err)
+
+	serverError := make(chan error, 1)
+
+	// running the HTTP server in a separate groutine, so that it doesn't block the main thread
+	// the main goroutine to handle shutdown signal
+	go func() {
+		log.Printf("starting gRPC-Gateway server on port %d...", a.gwPort)
+		if err := gwServer.ListenAndServe(); !errors.Is(err, http.ErrServerClosed) {
+			log.Fatalf("Failed to serve gRPC-Gateway: %v", err)
+			serverError <- err
+		}
+	}()
+
+	stop := make(chan os.Signal, 1)
+	// notify the stop channel for SIGINT(Ctrl+C) and SIGTERM
+	signal.Notify(stop, os.Interrupt, syscall.SIGTERM)
+
+	select {
+	case err := <-serverError:
+		log.Printf("Server error: %v", err)
+	case sig := <-stop:
+		log.Printf("Received shutdown signal: %v", sig)
 	}
+
+	log.Println("gRPC-Gateway server is shutting done...")
+
+	ctx, cancel = context.WithTimeout(context.Background(), 15*time.Second)
+	defer cancel()
+
+	// closing database connections, saving state, cleaning up temporary files
+	// TODO: Add your cleanup code here
+
+	// Shutdown method stops accepting new connections immediately while allowing existing requests to complete
+	if err := gwServer.Shutdown(ctx); err != nil {
+		log.Fatalf("Failed to shutdown gRPC-Gateway server: %v", err)
+		return
+	}
+	log.Println("gRPC-Gateway Server exited properly")
 }
 
 func (a *Adapter) Stop() {
